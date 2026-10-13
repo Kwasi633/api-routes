@@ -2,7 +2,7 @@
 
 Swagger documentation for the implemented Nyansapo API endpoints.
 
-Published URL: https://ka5atech.github.io/api-routes/
+Published URL: https://kwasi633.github.io/api-routes/
 
 ## Deployment
 
