@@ -1,0 +1,59 @@
+name: Deploy Swagger to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - openapi.yml
+      - index.html
+      - swagger-init.js
+      - package.json
+      - package-lock.json
+      - .github/workflows/pages.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: swagger-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci --ignore-scripts
+      - name: Build static Swagger site
+        run: |
+          mkdir -p swagger-site
+          cp index.html swagger-init.js openapi.yml swagger-site/
+          cp node_modules/swagger-ui-dist/swagger-ui.css swagger-site/
+          cp node_modules/swagger-ui-dist/swagger-ui-bundle.js swagger-site/
+          cp node_modules/swagger-ui-dist/swagger-ui-standalone-preset.js swagger-site/
+          touch swagger-site/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: swagger-site
+
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

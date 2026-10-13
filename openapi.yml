@@ -1,0 +1,467 @@
+openapi: 3.0.3
+info:
+  title: Nyansapo API
+  version: 1.0.0
+  description: Implemented Nyansapo authentication and operational endpoints.
+tags:
+  - name: Authentication
+    description: Signup, login, token refresh, and password recovery
+  - name: Operations
+    description: Health, readiness, and Prometheus metrics
+paths:
+  /health:
+    get:
+      tags: [Operations]
+      operationId: health
+      summary: Process liveness
+      responses:
+        '200':
+          description: HTTP process is alive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Healthy'
+  /ready:
+    get:
+      tags: [Operations]
+      operationId: ready
+      summary: PostgreSQL primary and Redis readiness
+      responses:
+        '200':
+          description: Required dependencies responded within the probe deadline
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Healthy'
+        '503':
+          description: A required dependency failed or timed out
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /metrics:
+    get:
+      tags: [Operations]
+      operationId: metrics
+      summary: Internal Prometheus metrics
+      description: Restrict access to the monitoring network through deployment ingress.
+      responses:
+        '200':
+          description: Prometheus exposition
+          content:
+            text/plain:
+              schema:
+                type: string
+  /auth/signup:
+    post:
+      tags: [Authentication]
+      operationId: signup
+      summary: Register with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Authentication successful
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Invalid request body; message explains each failed validation rule
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Authentication rate limit exceeded
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                example: 900
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Authentication dependency unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/login:
+    post:
+      tags: [Authentication]
+      operationId: login
+      summary: Sign in with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Authentication successful
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Invalid request body; message explains each failed validation rule
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Invalid credentials or refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Authentication rate limit exceeded
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                example: 900
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Authentication dependency unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/refresh:
+    post:
+      tags: [Authentication]
+      operationId: refresh
+      summary: Rotate a refresh token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: Authentication successful
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Invalid request body; message explains each failed validation rule
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Invalid credentials or refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Authentication rate limit exceeded
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                example: 900
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Authentication dependency unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/forgot-password:
+    post:
+      tags: [Authentication]
+      operationId: forgotPassword
+      summary: Request a password reset email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordRequest'
+      responses:
+        '200':
+          description: Same message for existing and unknown accounts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: no-store
+        '400':
+          description: Invalid input, weak password or invalid/expired reset link
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Too many authentication attempts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                example: 900
+        '503':
+          description: Recovery or rate-limiting dependency unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/reset-password:
+    post:
+      tags: [Authentication]
+      operationId: resetPassword
+      summary: Reset a password with an emailed token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '200':
+          description: Password changed; all sessions and reset links revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: no-store
+        '400':
+          description: Invalid input, weak password or invalid/expired reset link
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Too many authentication attempts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                example: 900
+        '503':
+          description: Recovery or rate-limiting dependency unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    Healthy:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum:
+            - ok
+    Error:
+      type: object
+      required:
+        - statusCode
+        - message
+        - path
+        - timestamp
+      properties:
+        statusCode:
+          type: integer
+          example: 503
+        message:
+          type: string
+          example: Internal server error
+        requestId:
+          type: string
+        path:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+    RegisterRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - email
+        - password
+      properties:
+        email: &a1
+          type: string
+          format: email
+          maxLength: 254
+          example: learner@example.com
+        password: &a3
+          type: string
+          format: password
+          minLength: 12
+          maxLength: 128
+          example: River!Quartz9Umbrella$72
+          description: 12–128 characters and a zxcvbn-ts score of at least 3/4.
+            Predictable patterns and personal information are penalized. Weak
+            passwords return 400 with a concise message to choose a stronger
+            password.
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        deviceId: &a2
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Optional installation ID; must be repeated during refresh if
+            initially supplied.
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - email
+        - password
+      properties:
+        email: *a1
+        password:
+          type: string
+          format: password
+          minLength: 1
+          maxLength: 128
+          example: River!Quartz9Umbrella$72
+        deviceId: *a2
+    RefreshRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - refreshToken
+      properties:
+        refreshToken:
+          type: string
+          description: Opaque UUID.random-secret token issued by the API
+        deviceId: *a2
+    AuthResponse:
+      type: object
+      required:
+        - user
+        - accessToken
+        - refreshToken
+        - tokenType
+        - expiresIn
+        - refreshExpiresAt
+      properties:
+        user:
+          type: object
+          required:
+            - id
+            - email
+            - displayName
+          properties:
+            id:
+              type: string
+              format: uuid
+            email:
+              type: string
+              format: email
+              maxLength: 254
+              example: learner@example.com
+              nullable: true
+            displayName:
+              type: string
+              nullable: true
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        tokenType:
+          type: string
+          enum:
+            - Bearer
+        expiresIn:
+          type: integer
+          example: 900
+        refreshExpiresAt:
+          type: string
+          format: date-time
+    ForgotPasswordRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - email
+      properties:
+        email: *a1
+        deviceId: *a2
+    ResetPasswordRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - token
+        - newPassword
+      properties:
+        token:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{43}$
+          description: Single-use reset token from the email link; expires in 15 minutes
+        newPassword: *a3
+        deviceId: *a2
+    MessageResponse:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

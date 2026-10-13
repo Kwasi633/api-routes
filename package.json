@@ -1,0 +1,8 @@
+{
+  "name": "api-routes",
+  "private": true,
+  "version": "1.0.0",
+  "dependencies": {
+    "swagger-ui-dist": "5.32.13"
+  }
+}
