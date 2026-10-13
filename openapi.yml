@@ -357,18 +357,6 @@ components:
             Predictable patterns and personal information are penalized. Weak
             passwords return 400 with a concise message to choose a stronger
             password.
-        displayName:
-          description: Optional display name.
-          type: string
-          minLength: 1
-          maxLength: 100
-        deviceId: &a2
-          type: string
-          minLength: 1
-          maxLength: 128
-          description:
-            Optional installation ID; must be repeated during refresh if
-            initially supplied.
     LoginRequest:
       type: object
       example:
@@ -386,7 +374,6 @@ components:
           minLength: 1
           maxLength: 128
           example: River!Quartz9Umbrella$72
-        deviceId: *a2
     RefreshRequest:
       type: object
       example:
@@ -398,7 +385,6 @@ components:
         refreshToken:
           type: string
           description: Opaque UUID.random-secret token issued by the API
-        deviceId: *a2
     AuthResponse:
       type: object
       required:
@@ -424,9 +410,6 @@ components:
               maxLength: 254
               example: learner@example.com
               nullable: true
-            displayName:
-              type: string
-              nullable: true
         accessToken:
           type: string
         refreshToken:
@@ -450,7 +433,6 @@ components:
         - email
       properties:
         email: *a1
-        deviceId: *a2
     ResetPasswordRequest:
       type: object
       example:
@@ -466,7 +448,6 @@ components:
           pattern: ^[A-Za-z0-9_-]{43}$
           description: Single-use reset token from the email link; expires in 15 minutes
         newPassword: *a3
-        deviceId: *a2
     MessageResponse:
       type: object
       required:
