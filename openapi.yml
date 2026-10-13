@@ -15,30 +15,30 @@ paths:
       operationId: health
       summary: Process liveness
       responses:
-        '200':
+        "200":
           description: HTTP process is alive
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Healthy'
+                $ref: "#/components/schemas/Healthy"
   /ready:
     get:
       tags: [Operations]
       operationId: ready
       summary: PostgreSQL primary and Redis readiness
       responses:
-        '200':
+        "200":
           description: Required dependencies responded within the probe deadline
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Healthy'
-        '503':
+                $ref: "#/components/schemas/Healthy"
+        "503":
           description: A required dependency failed or timed out
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
   /metrics:
     get:
       tags: [Operations]
@@ -46,7 +46,7 @@ paths:
       summary: Internal Prometheus metrics
       description: Restrict access to the monitoring network through deployment ingress.
       responses:
-        '200':
+        "200":
           description: Prometheus exposition
           content:
             text/plain:
@@ -62,9 +62,9 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RegisterRequest'
+              $ref: "#/components/schemas/RegisterRequest"
       responses:
-        '201':
+        "201":
           description: Authentication successful
           headers:
             Cache-Control:
@@ -74,20 +74,20 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthResponse'
-        '400':
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
           description: Invalid request body; message explains each failed validation rule
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '409':
+                $ref: "#/components/schemas/Error"
+        "409":
           description: Email already registered
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '429':
+                $ref: "#/components/schemas/Error"
+        "429":
           description: Authentication rate limit exceeded
           headers:
             Retry-After:
@@ -97,13 +97,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '503':
+                $ref: "#/components/schemas/Error"
+        "503":
           description: Authentication dependency unavailable
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
   /auth/login:
     post:
       tags: [Authentication]
@@ -114,9 +114,9 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LoginRequest'
+              $ref: "#/components/schemas/LoginRequest"
       responses:
-        '200':
+        "200":
           description: Authentication successful
           headers:
             Cache-Control:
@@ -126,20 +126,20 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthResponse'
-        '400':
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
           description: Invalid request body; message explains each failed validation rule
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '401':
+                $ref: "#/components/schemas/Error"
+        "401":
           description: Invalid credentials or refresh token
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '429':
+                $ref: "#/components/schemas/Error"
+        "429":
           description: Authentication rate limit exceeded
           headers:
             Retry-After:
@@ -149,13 +149,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '503':
+                $ref: "#/components/schemas/Error"
+        "503":
           description: Authentication dependency unavailable
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
   /auth/refresh:
     post:
       tags: [Authentication]
@@ -166,9 +166,9 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RefreshRequest'
+              $ref: "#/components/schemas/RefreshRequest"
       responses:
-        '200':
+        "200":
           description: Authentication successful
           headers:
             Cache-Control:
@@ -178,20 +178,20 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthResponse'
-        '400':
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
           description: Invalid request body; message explains each failed validation rule
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '401':
+                $ref: "#/components/schemas/Error"
+        "401":
           description: Invalid credentials or refresh token
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '429':
+                $ref: "#/components/schemas/Error"
+        "429":
           description: Authentication rate limit exceeded
           headers:
             Retry-After:
@@ -201,13 +201,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '503':
+                $ref: "#/components/schemas/Error"
+        "503":
           description: Authentication dependency unavailable
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
   /auth/forgot-password:
     post:
       tags: [Authentication]
@@ -218,42 +218,42 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ForgotPasswordRequest'
+              $ref: "#/components/schemas/ForgotPasswordRequest"
       responses:
-        '200':
+        "200":
           description: Same message for existing and unknown accounts
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MessageResponse'
+                $ref: "#/components/schemas/MessageResponse"
           headers:
             Cache-Control:
               schema:
                 type: string
                 example: no-store
-        '400':
+        "400":
           description: Invalid input, weak password or invalid/expired reset link
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '429':
+                $ref: "#/components/schemas/Error"
+        "429":
           description: Too many authentication attempts
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
           headers:
             Retry-After:
               schema:
                 type: integer
                 example: 900
-        '503':
+        "503":
           description: Recovery or rate-limiting dependency unavailable
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
   /auth/reset-password:
     post:
       tags: [Authentication]
@@ -264,42 +264,42 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ResetPasswordRequest'
+              $ref: "#/components/schemas/ResetPasswordRequest"
       responses:
-        '200':
+        "200":
           description: Password changed; all sessions and reset links revoked
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MessageResponse'
+                $ref: "#/components/schemas/MessageResponse"
           headers:
             Cache-Control:
               schema:
                 type: string
                 example: no-store
-        '400':
+        "400":
           description: Invalid input, weak password or invalid/expired reset link
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '429':
+                $ref: "#/components/schemas/Error"
+        "429":
           description: Too many authentication attempts
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
           headers:
             Retry-After:
               schema:
                 type: integer
                 example: 900
-        '503':
+        "503":
           description: Recovery or rate-limiting dependency unavailable
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
 components:
   schemas:
     Healthy:
@@ -334,6 +334,9 @@ components:
           format: date-time
     RegisterRequest:
       type: object
+      example:
+        email: learner@example.com
+        password: River!Quartz9Umbrella$72
       additionalProperties: false
       required:
         - email
@@ -355,6 +358,7 @@ components:
             passwords return 400 with a concise message to choose a stronger
             password.
         displayName:
+          description: Optional display name.
           type: string
           minLength: 1
           maxLength: 100
@@ -362,10 +366,14 @@ components:
           type: string
           minLength: 1
           maxLength: 128
-          description: Optional installation ID; must be repeated during refresh if
+          description:
+            Optional installation ID; must be repeated during refresh if
             initially supplied.
     LoginRequest:
       type: object
+      example:
+        email: learner@example.com
+        password: River!Quartz9Umbrella$72
       additionalProperties: false
       required:
         - email
@@ -381,6 +389,8 @@ components:
         deviceId: *a2
     RefreshRequest:
       type: object
+      example:
+        refreshToken: 123e4567-e89b-42d3-a456-426614174000.ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopq
       additionalProperties: false
       required:
         - refreshToken
@@ -404,7 +414,6 @@ components:
           required:
             - id
             - email
-            - displayName
           properties:
             id:
               type: string
@@ -434,6 +443,8 @@ components:
           format: date-time
     ForgotPasswordRequest:
       type: object
+      example:
+        email: learner@example.com
       additionalProperties: false
       required:
         - email
@@ -442,6 +453,9 @@ components:
         deviceId: *a2
     ResetPasswordRequest:
       type: object
+      example:
+        token: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopq
+        newPassword: River!Quartz9Umbrella$72
       additionalProperties: false
       required:
         - token
