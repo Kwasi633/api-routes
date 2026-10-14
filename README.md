@@ -22,3 +22,5 @@ In repository Settings → Pages, choose GitHub Actions as the source. The Pages
 Update openapi.yml when endpoints change. The backend is hosted separately. Try it out is disabled until a public HTTPS API URL and appropriate CORS are configured.
 
 Swagger UI assets are pinned and served locally; the specification comes from the private backend repository. This repository contains no backend implementation or environment files.
+
+Live API base URL: https://nyansapo-api.onrender.com

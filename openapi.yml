@@ -3,6 +3,9 @@ info:
   title: Nyansapo API
   version: 1.0.0
   description: Implemented Nyansapo authentication and operational endpoints.
+servers:
+  - url: https://nyansapo-api.onrender.com
+    description: Live API
 tags:
   - name: Authentication
     description: Signup, login, token refresh, and password recovery
