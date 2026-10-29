@@ -8,48 +8,51 @@ servers:
     description: Live API
 tags:
   - name: Authentication
-    description: Signup, login, token refresh, and password recovery
+    description: Signup, email verification, login, token refresh, and password recovery
   - name: Operations
     description: Health, readiness, and Prometheus metrics
 paths:
   /health:
     get:
-      tags: [Operations]
+      tags:
+        - Operations
       operationId: health
       summary: Process liveness
       responses:
-        "200":
+        '200':
           description: HTTP process is alive
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Healthy"
+                $ref: '#/components/schemas/Healthy'
   /ready:
     get:
-      tags: [Operations]
+      tags:
+        - Operations
       operationId: ready
       summary: PostgreSQL primary and Redis readiness
       responses:
-        "200":
+        '200':
           description: Required dependencies responded within the probe deadline
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Healthy"
-        "503":
+                $ref: '#/components/schemas/Healthy'
+        '503':
           description: A required dependency failed or timed out
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
   /metrics:
     get:
-      tags: [Operations]
+      tags:
+        - Operations
       operationId: metrics
       summary: Internal Prometheus metrics
       description: Restrict access to the monitoring network through deployment ingress.
       responses:
-        "200":
+        '200':
           description: Prometheus exposition
           content:
             text/plain:
@@ -57,7 +60,8 @@ paths:
                 type: string
   /auth/signup:
     post:
-      tags: [Authentication]
+      tags:
+        - Authentication
       operationId: signup
       summary: Register with email and password
       requestBody:
@@ -65,10 +69,10 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/RegisterRequest"
+              $ref: '#/components/schemas/RegisterRequest'
       responses:
-        "201":
-          description: Authentication successful
+        '201':
+          description: Account created; email verification required
           headers:
             Cache-Control:
               schema:
@@ -77,20 +81,20 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AuthResponse"
-        "400":
+                $ref: '#/components/schemas/SignupResponse'
+        '400':
           description: Invalid request body; message explains each failed validation rule
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-        "409":
+                $ref: '#/components/schemas/Error'
+        '409':
           description: Email already registered
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-        "429":
+                $ref: '#/components/schemas/Error'
+        '429':
           description: Authentication rate limit exceeded
           headers:
             Retry-After:
@@ -100,16 +104,126 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-        "503":
-          description: Authentication dependency unavailable
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Authentication or email delivery unavailable. If the account was
+            saved, retry using /auth/resend-verification after the cooldown.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
+      description: Creates an unverified password account and sends a six-digit
+        verification code. No access or refresh tokens are issued. Verify the
+        email, then call /auth/login. Display name is derived from the email
+        username.
+  /auth/verify-email:
+    post:
+      tags:
+        - Authentication
+      summary: Verify a signup email using a six-digit code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyEmailRequest'
+      responses:
+        '200':
+          description: Email verified successfully. Please sign in.
+          headers: &a1
+            Cache-Control:
+              schema:
+                type: string
+                example: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: Email verified successfully. Please sign in.
+        '400':
+          description: Invalid request body or invalid, expired, reused, or exhausted
+            verification code
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Authentication rate limit exceeded
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                example: 900
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Authentication or email service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      operationId: verifyEmail
+      description: Verifies a pending password account. The code is single use,
+        expires after 15 minutes, and permits five incorrect guesses. Successful
+        verification sends a best-effort welcome email. Call /auth/login
+        afterward.
+  /auth/resend-verification:
+    post:
+      tags:
+        - Authentication
+      summary: Resend signup email verification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResendVerificationRequest'
+      responses:
+        '200':
+          description: If your account needs verification, a verification email has been
+            sent.
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: If your account needs verification, a verification email has been sent.
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Authentication rate limit exceeded
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                example: 900
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Authentication or email service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      operationId: resendVerification
+      description: Returns the same generic message for unknown, verified, and pending
+        accounts. Sends pending accounts a new code at most once per minute; a
+        new code invalidates the previous code and resets its guess limit. Uses
+        the existing Resend configuration.
   /auth/login:
     post:
-      tags: [Authentication]
+      tags:
+        - Authentication
       operationId: login
       summary: Sign in with email and password
       requestBody:
@@ -117,9 +231,9 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/LoginRequest"
+              $ref: '#/components/schemas/LoginRequest'
       responses:
-        "200":
+        '200':
           description: Authentication successful
           headers:
             Cache-Control:
@@ -129,20 +243,26 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AuthResponse"
-        "400":
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
           description: Invalid request body; message explains each failed validation rule
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-        "401":
+                $ref: '#/components/schemas/Error'
+        '401':
           description: Invalid credentials or refresh token
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-        "429":
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Email verification required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
           description: Authentication rate limit exceeded
           headers:
             Retry-After:
@@ -152,16 +272,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-        "503":
+                $ref: '#/components/schemas/Error'
+        '503':
           description: Authentication dependency unavailable
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
+      description: New password accounts must verify their email before signing in.
+        Existing accounts retain access after the verification migration.
   /auth/refresh:
     post:
-      tags: [Authentication]
+      tags:
+        - Authentication
       operationId: refresh
       summary: Rotate a refresh token
       requestBody:
@@ -169,9 +292,9 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/RefreshRequest"
+              $ref: '#/components/schemas/RefreshRequest'
       responses:
-        "200":
+        '200':
           description: Authentication successful
           headers:
             Cache-Control:
@@ -181,20 +304,20 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AuthResponse"
-        "400":
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
           description: Invalid request body; message explains each failed validation rule
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-        "401":
+                $ref: '#/components/schemas/Error'
+        '401':
           description: Invalid credentials or refresh token
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-        "429":
+                $ref: '#/components/schemas/Error'
+        '429':
           description: Authentication rate limit exceeded
           headers:
             Retry-After:
@@ -204,16 +327,17 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-        "503":
+                $ref: '#/components/schemas/Error'
+        '503':
           description: Authentication dependency unavailable
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
   /auth/forgot-password:
     post:
-      tags: [Authentication]
+      tags:
+        - Authentication
       operationId: forgotPassword
       summary: Request a password reset email
       requestBody:
@@ -221,88 +345,367 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ForgotPasswordRequest"
+              $ref: '#/components/schemas/ForgotPasswordRequest'
       responses:
-        "200":
+        '200':
           description: Same message for existing and unknown accounts
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MessageResponse"
+                $ref: '#/components/schemas/MessageResponse'
           headers:
             Cache-Control:
               schema:
                 type: string
                 example: no-store
-        "400":
-          description: Invalid input, weak password or invalid/expired reset link
+        '400':
+          description: Invalid input, weak password or invalid/expired/exhausted reset code
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-        "429":
+                $ref: '#/components/schemas/Error'
+        '429':
           description: Too many authentication attempts
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
           headers:
             Retry-After:
               schema:
                 type: integer
                 example: 900
-        "503":
+        '503':
           description: Recovery or rate-limiting dependency unavailable
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
+      description: Send a six-digit code to an existing password account. Codes expire
+        in 15 minutes. Resends have a 60-second cooldown and replace the prior
+        challenge. Unknown accounts and cooldown requests return the same
+        generic response.
   /auth/reset-password:
     post:
-      tags: [Authentication]
+      tags:
+        - Authentication
       operationId: resetPassword
-      summary: Reset a password with an emailed token
+      summary: Reset a password with an emailed six-digit code
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ResetPasswordRequest"
+              $ref: '#/components/schemas/ResetPasswordRequest'
       responses:
-        "200":
-          description: Password changed; all sessions and reset links revoked
+        '200':
+          description: Password changed; all sessions and reset codes revoked
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MessageResponse"
+                $ref: '#/components/schemas/MessageResponse'
           headers:
             Cache-Control:
               schema:
                 type: string
                 example: no-store
-        "400":
-          description: Invalid input, weak password or invalid/expired reset link
+        '400':
+          description: Invalid input, weak password or invalid/expired/exhausted reset code
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-        "429":
+                $ref: '#/components/schemas/Error'
+        '429':
           description: Too many authentication attempts
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
           headers:
             Retry-After:
               schema:
                 type: integer
                 example: 900
-        "503":
+        '503':
           description: Recovery or rate-limiting dependency unavailable
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
+      description: Email and code identify the challenge. Five incorrect guesses
+        consume it. A successful reset revokes all sessions. This replaces the
+        former token-based request body.
+  /v1/auth/bootstrap:
+    post:
+      tags:
+        - Social authentication
+      summary: Ensure the verified Clerk user has one app account
+      operationId: clerkBootstrap
+      security:
+        - clerkSession: []
+      responses:
+        '200':
+          description: Current account profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClerkProfile'
+        '401':
+          description: 'AUTH_TOKEN_INVALID: missing, invalid, expired, wrong-instance or
+            disallowed-party session token'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialError'
+        '403':
+          description: 'ACCOUNT_DISABLED: suspended or deleted account'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialError'
+        '404':
+          description: 'USER_NOT_PROVISIONED: bootstrap must run first'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialError'
+        '429':
+          description: RATE_LIMITED
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+              description: Seconds before retry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialError'
+        '503':
+          description: 'AUTH_SERVICE_UNAVAILABLE: retry safely'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialError'
+      description: 'No app tokens are issued. Ignores no identity fields: nonempty
+        bodies are rejected. Retries preserve setup and internal ID.'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+  /v1/me/setup:
+    patch:
+      tags:
+        - Social authentication
+      summary: Partially save account setup; complete requires language, dialect and
+        motivation
+      operationId: saveClerkSetup
+      security:
+        - clerkSession: []
+      responses:
+        '200':
+          description: Current account profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClerkProfile'
+        '401':
+          description: 'AUTH_TOKEN_INVALID: missing, invalid, expired, wrong-instance or
+            disallowed-party session token'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialError'
+        '403':
+          description: 'ACCOUNT_DISABLED: suspended or deleted account'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialError'
+        '404':
+          description: 'USER_NOT_PROVISIONED: bootstrap must run first'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialError'
+        '422':
+          description: SETUP_INVALID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialError'
+        '429':
+          description: RATE_LIMITED
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+              description: Seconds before retry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialError'
+        '503':
+          description: 'AUTH_SERVICE_UNAVAILABLE: retry safely'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClerkSetup'
+  /v1/me:
+    get:
+      tags:
+        - Social authentication
+      summary: Read authoritative account profile and setup state
+      operationId: getClerkProfile
+      security:
+        - clerkSession: []
+      responses:
+        '200':
+          description: Current account profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClerkProfile'
+        '401':
+          description: 'AUTH_TOKEN_INVALID: missing, invalid, expired, wrong-instance or
+            disallowed-party session token'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialError'
+        '403':
+          description: 'ACCOUNT_DISABLED: suspended or deleted account'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialError'
+        '404':
+          description: 'USER_NOT_PROVISIONED: bootstrap must run first'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialError'
+        '429':
+          description: RATE_LIMITED
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+              description: Seconds before retry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialError'
+        '503':
+          description: 'AUTH_SERVICE_UNAVAILABLE: retry safely'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialError'
+    delete:
+      tags:
+        - Social authentication
+      summary: Permanently delete app data and retry Clerk identity deletion
+      operationId: deleteClerkAccount
+      security:
+        - clerkSession: []
+      responses:
+        '200':
+          description: Deletion complete
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted:
+                    type: boolean
+        '401':
+          description: 'AUTH_TOKEN_INVALID: missing, invalid, expired, wrong-instance or
+            disallowed-party session token'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialError'
+        '403':
+          description: 'ACCOUNT_DISABLED: suspended or deleted account'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialError'
+        '404':
+          description: 'USER_NOT_PROVISIONED: bootstrap must run first'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialError'
+        '429':
+          description: RATE_LIMITED
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+              description: Seconds before retry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialError'
+        '503':
+          description: 'AUTH_SERVICE_UNAVAILABLE: retry safely'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialError'
+      description: Access is disabled and local user data erased before calling Clerk.
+        Failed remote deletions are retried every minute. A minimal identity
+        tombstone prevents reprovisioning.
+  /v1/webhooks/clerk:
+    post:
+      tags:
+        - Social authentication
+      summary: Verified Clerk user lifecycle events
+      operationId: clerkWebhook
+      security: []
+      parameters:
+        - name: svix-id
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: svix-timestamp
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: svix-signature
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Event committed or duplicate acknowledged
+        '400':
+          description: 'WEBHOOK_INVALID: invalid signature, timestamp, body or user ID'
+        '503':
+          description: 'AUTH_SERVICE_UNAVAILABLE: retry safely'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialError'
 components:
   schemas:
     Healthy:
@@ -345,12 +748,12 @@ components:
         - email
         - password
       properties:
-        email: &a1
+        email: &a2
           type: string
           format: email
           maxLength: 254
           example: learner@example.com
-        password: &a3
+        password: &a4
           type: string
           format: password
           minLength: 12
@@ -360,6 +763,19 @@ components:
             Predictable patterns and personal information are penalized. Weak
             passwords return 400 with a concise message to choose a stronger
             password.
+        deviceId: &a3
+          type: string
+          minLength: 1
+          maxLength: 128
+          example: mobile-installation-id
+          description: Optional device identifier.
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 100
+          deprecated: true
+          description: Accepted for compatibility; signup derives the display name from
+            the email username instead.
     LoginRequest:
       type: object
       example:
@@ -370,13 +786,14 @@ components:
         - email
         - password
       properties:
-        email: *a1
+        email: *a2
         password:
           type: string
           format: password
           minLength: 1
           maxLength: 128
           example: River!Quartz9Umbrella$72
+        deviceId: *a3
     RefreshRequest:
       type: object
       example:
@@ -388,6 +805,13 @@ components:
         refreshToken:
           type: string
           description: Opaque UUID.random-secret token issued by the API
+        deviceId:
+          type: string
+          minLength: 1
+          maxLength: 128
+          example: mobile-installation-id
+          description: Must match the device ID used when the session was created, if
+            supplied.
     AuthResponse:
       type: object
       required:
@@ -399,20 +823,7 @@ components:
         - refreshExpiresAt
       properties:
         user:
-          type: object
-          required:
-            - id
-            - email
-          properties:
-            id:
-              type: string
-              format: uuid
-            email:
-              type: string
-              format: email
-              maxLength: 254
-              example: learner@example.com
-              nullable: true
+          $ref: '#/components/schemas/PublicUser'
         accessToken:
           type: string
         refreshToken:
@@ -435,22 +846,28 @@ components:
       required:
         - email
       properties:
-        email: *a1
+        email: *a2
     ResetPasswordRequest:
       type: object
       example:
-        token: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopq
+        email: learner@example.com
+        code: '000042'
         newPassword: River!Quartz9Umbrella$72
       additionalProperties: false
       required:
-        - token
+        - email
+        - code
         - newPassword
       properties:
-        token:
+        newPassword: *a4
+        email: *a2
+        code:
           type: string
-          pattern: ^[A-Za-z0-9_-]{43}$
-          description: Single-use reset token from the email link; expires in 15 minutes
-        newPassword: *a3
+          pattern: ^[0-9]{6}$
+          minLength: 6
+          maxLength: 6
+          description: Six-digit email code, including leading zeros. Expires in 15
+            minutes; consumed after five failed guesses.
     MessageResponse:
       type: object
       required:
@@ -458,8 +875,163 @@ components:
       properties:
         message:
           type: string
+    ClerkSetup:
+      type: object
+      additionalProperties: false
+      properties:
+        language:
+          type: string
+          enum:
+            - twi
+        dialect:
+          type: string
+          enum:
+            - akuapem
+            - asante
+        motivation:
+          type: string
+          enum:
+            - family
+            - heritage
+            - travel
+            - school
+            - fun
+        dailyGoalMinutes:
+          type: integer
+          enum:
+            - 5
+            - 10
+            - 15
+        complete:
+          type: boolean
+    ClerkProfile:
+      type: object
+      required:
+        - user
+      properties:
+        user:
+          type: object
+          required:
+            - id
+            - clerkUserId
+            - email
+            - emailVerified
+            - displayName
+            - avatarUrl
+            - setupComplete
+            - preferences
+          properties:
+            id:
+              type: string
+              format: uuid
+            clerkUserId:
+              type: string
+            email: &a5
+              type: string
+              nullable: true
+            emailVerified:
+              type: boolean
+            displayName: *a5
+            avatarUrl: *a5
+            setupComplete:
+              type: boolean
+            preferences:
+              type: object
+              properties:
+                language: *a5
+                dialect: *a5
+                motivation: *a5
+                dailyGoalMinutes:
+                  type: integer
+                  enum:
+                    - 5
+                    - 10
+                    - 15
+    SocialError:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+            - requestId
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            requestId:
+              type: string
+    PublicUser:
+      type: object
+      required:
+        - id
+        - email
+        - displayName
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+          maxLength: 254
+          example: learner@example.com
+          nullable: true
+        displayName:
+          type: string
+          nullable: true
+          maxLength: 100
+          example: learner
+          description: For password signup, derived from the normalized email username.
+    SignupResponse:
+      type: object
+      required:
+        - message
+        - user
+      properties:
+        message:
+          type: string
+          example: Check your email to verify your account.
+        user:
+          $ref: '#/components/schemas/PublicUser'
+    VerifyEmailRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - email
+        - code
+      properties:
+        email: *a2
+        code:
+          type: string
+          pattern: ^[0-9]{6}$
+          minLength: 6
+          maxLength: 6
+          example: '012345'
+          description: Six-digit email code, including leading zeros. Expires in 15
+            minutes; at most five incorrect guesses.
+      example:
+        email: learner@example.com
+        code: '012345'
+    ResendVerificationRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - email
+      properties:
+        email: *a2
+      example:
+        email: learner@example.com
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+    clerkSession:
+      type: http
+      scheme: bearer
+      bearerFormat: Clerk session JWT
